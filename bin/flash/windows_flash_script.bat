@@ -15,7 +15,7 @@ if exist "super.zst" (
     ) else (
         echo. Extracting the super image, wait patiently
     )
-    platform-tools-windows\zstd.exe --rm -d super.zst -o super.img
+    bin\windows\zstd.exe --rm -d super.zst -o super.img
     if not "%errorlevel%" == "0" (
         if "%LANG%"=="Chinese" (
             echo. 转换失败,按任意键退出
@@ -38,7 +38,7 @@ if "%LANG%"=="Chinese" (
     echo.
     echo. 1. Preserve user data during flashing
     echo.
-    echo. 2. Wiping data without wiping /data/media
+    echo. 2. Wiping data
     echo.
     set /p input=Please select - 1 is selected by default, and enter to execute:
 )
@@ -99,35 +99,45 @@ if "%LANG%"=="Chinese" (
     set /p kernel=Please select - 1 is selected by default, and enter to execute:
 )
 
-if  "%kernel%"=="1" (
+if "%kernel%"=="1" (
     if "%LANG%"=="Chinese" (
-	    echo. 刷入第三方boot_ksu.img
-        
+        echo. 刷入第三方boot_ksu.img
     ) else (
         echo. Flashing custom boot.img
-    ) 
-    platform-tools-windows\fastboot.exe flash boot %~dp0boot_ksu.img
-    platform-tools-windows\fastboot.exe flash dtbo %~dp0firmware-update/dtbo_ksu.img
-
+    )
+    
+    if exist "%~dp0boot_ksu.img" (
+        bin\windows\fastboot.exe flash boot %~dp0boot_ksu.img
+        bin\windows\fastboot.exe flash dtbo %~dp0firmware-update/dtbo_ksu.img
+    ) else (
+		if "%LANG%"=="Chinese" (
+        		echo. boot_ksu.img 不存在，刷入官方boot_official.img
+    			) else (
+        		echo. boot_ksu.img not exists, Flashing boot_official.img
+    			)
+        
+        bin\windows\fastboot.exe flash boot %~dp0boot_official.img
+        bin\windows\fastboot.exe flash dtbo %~dp0firmware-update/dtbo.img
+    )
 ) else (
-    platform-tools-windows\fastboot.exe flash boot %~dp0boot_official.img
-    platform-tools-windows\fastboot.exe flash dtbo %~dp0firmware-update/dtbo.img
+    bin\windows\fastboot.exe flash boot %~dp0boot_official.img
+    bin\windows\fastboot.exe flash dtbo %~dp0firmware-update/dtbo.img
 )
 
 REM firmware
 
-platform-tools-windows\fastboot.exe erase super
-platform-tools-windows\fastboot.exe reboot bootloader
+bin\windows\fastboot.exe erase super
+bin\windows\fastboot.exe reboot bootloader
 ping 127.0.0.1 -n 5 >nul 2>nul
-platform-tools-windows\fastboot.exe flash super %~dp0super.img
+bin\windows\fastboot.exe flash super %~dp0super.img
 if "%input%" == "2" (
 	if "%LANG%"=="Chinese" (
 	    echo. 正在双清系统,耐心等待
     ) else (
-        echo. Wiping data without wiping /data/media/, please wait patiently
+        echo. Wiping data, please wait patiently
     ) 
-	platform-tools-windows\fastboot.exe erase userdata
-	platform-tools-windows\fastboot.exe erase metadata
+	bin\windows\fastboot.exe erase userdata
+	bin\windows\fastboot.exe erase metadata
 )
 REM SET_ACTION_SLOT_A_BEGIN
 if "%LANG%"=="Chinese" (
@@ -135,11 +145,11 @@ if "%LANG%"=="Chinese" (
 ) else (
     echo. Starting the process to set the active slot to 'a.' This may take some time. Please refrain from manually restarting or unplugging the data cable, as doing so could result in the device becoming unresponsive.
 )
-platform-tools-windows\fastboot.exe set_active a
+bin\windows\fastboot.exe set_active a
 
 REM SET_ACTION_SLOT_A_END
 
-platform-tools-windows\fastboot.exe reboot
+bin\windows\fastboot.exe reboot
 
 if "%LANG%"=="Chinese" (
     echo. 刷机完成,若手机长时间未重启请手动重启,按任意键退出

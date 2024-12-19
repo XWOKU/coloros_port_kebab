@@ -1,9 +1,9 @@
 #!/sbin/sh
-ui_print() { $BOOTMODE && echo "$1" || echo -e "ui_print $1\nui_print" >> $OUTFD; }
-abort() { ui_print "$1"; ui_print " "; exit 1; }
+#ui_print() { $BOOTMODE && echo "$1" || echo -e "ui_print $1\nui_print" >> $OUTFD; }
+#abort() { ui_print "$1"; ui_print " "; exit 1; }
 OUTFD=/proc/self/fd/$2
 ZIPFILE="$3"
-tmp=/dev/tmp
+#tmp=/dev/tmp
 
 
 set -x
@@ -11,28 +11,13 @@ rm -rf $tmp
 mkdir -p $tmp
 
 package_extract_file() {
-  ui_print "- 正在刷写分区 $(echo $2 | cut -d '/' -f 6) "
   unzip -p "$ZIPFILE" $1 >$2
 }
 
 package_extract_zstd() {
-  ui_print "- 正在刷写分区 $(echo $2 | cut -d '/' -f 6) "
+  ui_print "- Flashing $(echo $2 | cut -d '/' -f 6) "
   unzip -p "$ZIPFILE" $1 | /dev/tmp/META-INF/zstd -c -d >$2
 }
-
-# Device check
-supported=false
-ui_print "Checking device compatibility..."
-for i in 19805 20809 20828; do
-  for prop in "ro.boot.prjname" "ro.boot.project_name"; do
-    if [ "$(getprop $prop)" == "$i" ]; then
-      ui_print "- Supported Device detected"
-      supported=true
-      break 2
-    fi
-  done
-done
-$supported || abort "- Unsupported device! Aborting!"
 
 ddr4=false
 ddr5=false
@@ -56,8 +41,7 @@ fi
 ui_print " "
 ui_print "****************************"
 ui_print "Device: device_code"
-ui_print "Region: CN"
-ui_print "Flashing Firmware..."
+ui_print "Region: REGIONMARK"
 ui_print " "
 ui_print "Updating modem..."
 package_extract_file "firmware-update/modem.img" "/dev/block/bootdevice/by-name/modem_a"
@@ -117,6 +101,7 @@ package_extract_file "firmware-update/tz.img" "/dev/block/bootdevice/by-name/tz_
 ui_print "Updating uefisecapp..."
 package_extract_file "firmware-update/uefisecapp.img" "/dev/block/bootdevice/by-name/uefisecapp_a"
 package_extract_file "firmware-update/uefisecapp.img" "/dev/block/bootdevice/by-name/uefisecapp_b"
+
 if [ "$ddr4" = "true" ]; then
    ui_print "Updating xbl for DDR4 RAM..."
    package_extract_file "firmware-update/xbl.img" "/dev/block/bootdevice/by-name/xbl_a"
@@ -133,24 +118,63 @@ elif  [ "$ddr5" = "true" ]; then
    package_extract_file "firmware-update/xbl_config_lp5.img" "/dev/block/bootdevice/by-name/xbl_config_b"
 fi
 
+ui_print "Disabing AVB2.0..."
+ackage_extract_file "firmware-update/vbmeta_system.img" "/dev/block/bootdevice/by-name/vbmeta_system_a"
+package_extract_file "firmware-update/vbmeta_system.img" "/dev/block/bootdevice/by-name/vbmeta_system_b"
+ackage_extract_file "firmware-update/vbmeta.img" "/dev/block/bootdevice/by-name/vbmeta_a"
+package_extract_file "firmware-update/vbmeta.img" "/dev/block/bootdevice/by-name/vbmeta_b"
+
+
+#boot
+if [[ $ZIPFILE == *ROOT* ]] && [[ -f boot_tv.img ]]; then
+  ui_print "Flashing custom boot.img..."
+  package_extract_file "boot_tv.img" "/dev/block/bootdevice/by-name/boot_a"
+	package_extract_file "boot_tv.img" "/dev/block/bootdevice/by-name/boot_b"
+  ui_print "Flashing custom dtbo.img..."
+	package_extract_file "firmware-update/dtbo_tv.img" "/dev/block/bootdevice/by-name/dtbo_a"
+	package_extract_file "firmware-update/dtbo_tv.img" "/dev/block/bootdevice/by-name/dtbo_b"
+else
+  ui_print "Flashing stock boot.img..."
+  package_extract_file "boot_official.img" "/dev/block/bootdevice/by-name/boot_a"
+	package_extract_file "boot_official.img" "/dev/block/bootdevice/by-name/boot_b"
+  ui_print "Flashing stock dtbo.img..."
+	package_extract_file "firmware-update/dtbo.img" "/dev/block/bootdevice/by-name/dtbo_a"
+	package_extract_file "firmware-update/dtbo.img" "/dev/block/bootdevice/by-name/dtbo_b"
+fi
+
+
+
 #super image
 unzip "$ZIPFILE" META-INF/zstd -d /dev/tmp
 chmod -R 0755 /dev/tmp
 
 package_extract_zstd "super.zst" "/dev/block/bootdevice/by-name/super"
 
-ui_print "- 清除缓存"
+
+#REMAP_START
+[ -e /dev/block/mapper/odm_a ] && lptools unmap odm_a && lptools map odm_a
+[ -e /dev/block/mapper/mi_ext_a ] && lptools unmap mi_ext_a && lptools map mi_ext_a
+[ -e /dev/block/mapper/system_a ] && lptools unmap system_a && lptools map system_a
+[ -e /dev/block/mapper/vendor_a ] && lptools unmap vendor_a && lptools map vendor_a
+[ -e /dev/block/mapper/product_a ] && lptools unmap product_a && lptools map product_a
+[ -e /dev/block/mapper/odm_dlkm_a ] && lptools unmap odm_dlkm_a && lptools map odm_dlkm_a
+[ -e /dev/block/mapper/system_ext_a ] && lptools unmap system_ext_a && lptools map system_ext_a
+[ -e /dev/block/mapper/vendor_dlkm_a ] && lptools unmap vendor_dlkm_a && lptools map vendor_dlkm_a
+[ -e /dev/block/mapper/system_dlkm_a ] && lptools unmap system_dlkm_a && lptools map system_dlkm_a
+#REMAP_END
+
+#ui_print "- 清除缓存"
 rm -rf /data/dalvik-cache/arm/*
 rm -rf /data/dalvik-cache/arm64/*
 rm -rf /data/system/package_cache/*
 ui_print " "
 ui_print " "
-ui_print "- 刷机完毕"
+#ui_print "- 刷机完毕"
 ui_print " "
 ui_print " "
-ui_print "- 如有红色挂载报错请直接忽略"
-ui_print "- 如有红色挂载报错请直接忽略"
-ui_print "- 如有红色挂载报错请直接忽略"
+#ui_print "- 如有红色挂载报错请直接忽略"
+#ui_print "- 如有红色挂载报错请直接忽略"
+#ui_print "- 如有红色挂载报错请直接忽略"
 ui_print " "
 ui_print " "
 

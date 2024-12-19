@@ -24,17 +24,17 @@ elif [[ "$LANG" =~ ^zh_.*\.UTF-8$ ]]; then
 	read -p "請選擇(默認選擇1,回車執行):" input
 else
 	echo
-	echo 1.Reserved data flushing
+	echo 1.Reserved data
 	echo
-	echo 2.Wipe data without formatting /data/media/
+	echo 2.Wipe data
 	echo
 	read -p "Please select(1 is selected by default, and enter to execute):" input
 fi
-pdapt=$(type apt | grep "apt is")
+pdapt=$(command -v apt | grep "apt")
 if [ -n "$pdapt" ];then
 	echo -n "]0;mac_linux_flash_script"
 fi
-pdfastboot=$(type fastboot | grep "fastboot is")
+pdfastboot=$(command -v fastboot | grep "fastboot")
 if [ ! -n "$pdfastboot" ];then
 	if [ ! -n "$pdapt" ];then
 		sudo brew install android-platform-tools
@@ -58,7 +58,7 @@ if [ -n "$fastboot_path" ]; then
   export ANDROID_PRODUCT_OUT=$(dirname "$fastboot_path")
 fi
 
-pdzstd=$(type zstd | grep "zstd is")
+pdzstd=$(command -v zstd | grep "zstd")
 if [ ! -n "$pdzstd" ];then
 	if [ ! -n "$pdapt" ];then
 		sudo brew install zstd
@@ -104,41 +104,66 @@ if [ -f "super.zst" ];then
 fi
 
 if [ "$LANG" = "C.UTF-8" ];then
-	echo "机型验证中...请确保您的设备代号为[device_code]，并已经进入bootloader模式。"
+	echo "机型验证中...请确保您的设备代号为device_code，并已经进入bootloader模式。"
 elif [ "$LANG" = "zh_CN.UTF-8" ];then
-	echo "机型验证中...请确保您的设备代号为[device_code]，并已经进入bootloader模式。"
+	echo "机型验证中...请确保您的设备代号为device_code，并已经进入bootloader模式。"
 elif [[ "$LANG" =~ ^zh_.*\.UTF-8$ ]]; then
-	echo "機型驗證中...請確保您的設備代號為[device_code]，並已進入bootloader模式。"
+	echo "機型驗證中...請確保您的設備代號為device_code，並已進入bootloader模式。"
 else
-	echo "Validating device...please boot your device into bootloader and make sure your device code is [device_code]"
+	echo "Validating device...please boot your device into bootloader and make sure your device code is device_code"
 fi
 
 fastboot $* getvar product 2>&1 | grep "^product: *device_code"
 if [ $? -ne 0  ] ; then
 	if [ "$LANG" = "C.UTF-8" ];then
-		    echo 机型[device_code]校验失败，检查包是否匹配
+		    echo 机型device_code校验失败，检查包是否匹配
 		elif [ "$LANG" = "zh_CN.UTF-8" ];then
 		    echo 机型device_code校验失败，检查包是否匹配
 		elif [[ "$LANG" =~ ^zh_.*\.UTF-8$ ]]; then
 		    echo 機型device_code校驗失敗，檢查包是否匹配
 		else
-		    echo "Missmatching image and device [device_code]"
+		    echo "Missmatching image and device device_code"
 		fi
 	exit 1 
 fi
 
 # firmware
 
-fastboot erase super
+
 fastboot reboot bootloader
+fastboot erase super
 ping 127.0.0.1 -c 5 1> /dev/null 2>&1
 
 if [ -f "boot_tv.img" ]; then
-	fastboot flash boot_ab boot_tv.img
-	fastboot flash dtbo_ab firmware-update/dtbo_tv.img
+	if [ "$LANG" = "C.UTF-8" ];then
+		    echo 刷入第三方内核中...
+		elif [ "$LANG" = "zh_CN.UTF-8" ];then
+		    echo 刷入第三方内核中...
+		elif [[ "$LANG" =~ ^zh_.*\.UTF-8$ ]]; then
+		    echo 刷入第三方内核中...
+		else
+		    echo "Flahsing boot_tv.img"
+		fi
+	fi
+	fastboot flash boot_a boot_tv.img
+	fastboot flash boot_b boot_tv.img
+	fastboot flash dtbo_a firmware-update/dtbo_tv.img
+	fastboot flash dtbo_b firmware-update/dtbo_tv.img
 else
-	fastboot flash boot_ab boot_official.img
-	fastboot flash dtbo_ab firmware-update/dtbo.img
+	if [ "$LANG" = "C.UTF-8" ];then
+		    echo 刷入官方内核中...
+		elif [ "$LANG" = "zh_CN.UTF-8" ];then
+		    echo 刷入官方内核中...
+		elif [[ "$LANG" =~ ^zh_.*\.UTF-8$ ]]; then
+		    echo 刷入官方内核中...
+		else
+		    echo "Flahsing boot_offcial.img"
+		fi
+	fi
+	fastboot flash boot_a boot_official.img
+	fastboot flash boot_b boot_official.img
+	fastboot flash dtbo_a firmware-update/dtbo.img
+	fastboot flash dtbo_b firmware-update/dtbo.img
 fi
 fastboot flash super super.img
 if [ ! -n "$input" ];then
@@ -151,7 +176,7 @@ elif [ "$input" -eq "2" ];then
 	elif [[ "$LANG" =~ ^zh_.*\.UTF-8$ ]]; then
 	    echo 正在雙清系統，耐心等待
 	else
-	    echo Wiping data without data/media/, please wait patiently
+	    echo Wiping data, please wait patiently
 	fi
 	fastboot erase userdata
 	fastboot erase metadata
