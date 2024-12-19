@@ -255,6 +255,21 @@ rm -rf build/portrom/images/my_manifest
 cp -rf build/baserom/images/my_manifest build/portrom/images/
 cp -rf build/baserom/images/config/my_manifest_* build/portrom/images/config/
 sed -i "s/ro.build.display.id=.*/ro.build.display.id=${target_display_id}/g" build/portrom/images/my_manifest/build.prop
+#其他机型可能没有default.prop
+for prop_file in $(find build/portrom/images/vendor/ -name "*.prop"); do
+    vndk_version=$(< "$prop_file" grep "ro.vndk.version" | awk "NR==1" | cut -d '=' -f 2)
+    if [ -n "$vndk_version" ]; then
+        yellow "ro.vndk.version为$vndk_version" "ro.vndk.version found in $prop_file: $vndk_version"
+        break  
+    fi
+done
+base_vndk=$(find build/baserom/images/system_ext/apex -type f -name "com.android.vndk.v${vndk_version}.apex")
+port_vndk=$(find build/portrom/images/system_ext/apex -type f -name "com.android.vndk.v${vndk_version}.apex")
+
+if [ ! -f "${port_vndk}" ]; then
+    yellow "apex不存在，从原包复制" "target apex is missing, copying from baserom"
+    cp -rf "${base_vndk}" "build/portrom/images/system_ext/apex/"
+fi
 sed -i "s/ro.build.version.security_patch=.*/ro.build.version.security_patch=${portrom_version_security_patch}/g" build/portrom/images/my_manifest/build.prop
 
 if [[ ! -d tmp ]];then
