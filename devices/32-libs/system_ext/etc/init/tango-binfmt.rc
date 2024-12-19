@@ -1,0 +1,29 @@
+on late-fs && property:ro.vendor.oplus.tango_allow32=true
+    mount binfmt_misc none /proc/sys/fs/binfmt_misc
+    write /proc/sys/fs/binfmt_misc/register ":tango_translator:M::\x7fELF\x01\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x28\x00:\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\xfe\xff\xff\xff:/system_ext/bin/tango_translator:POCF"
+
+on boot && property:ro.vendor.oplus.tango_allow32=true
+    write /proc/sys/fs/binfmt_misc/tango_translator 1
+
+on boot && property:ro.vendor.oplus.tango_allow32=false
+    write /proc/sys/fs/binfmt_misc/tango_translator 0
+
+service zygote_tango /system/bin/app_process32 -Xzygote /system/bin --zygote --socket-name=zygote_secondary
+    class main
+    priority -20
+    user root
+    group root readproc reserved_disk
+    socket zygote_secondary stream 660 root system
+    socket usap_pool_secondary stream 660 root system
+    task_profiles ProcessCapacityHigh MaxPerformance
+    disabled
+
+on zygote-start && property:ro.vendor.oplus.tango_binfmt_misc_support=1 && property:ro.vendor.oplus.app32_boost_support=1 && property:persist.sys.tango_zygote32.start=1
+    write /proc/bootprof "INIT:zygote_tango_start"
+    start zygote_tango
+
+on property:sys.boot_completed=1 && property:ro.vendor.oplus.tango_binfmt_misc_support=1 && property:ro.vendor.oplus.app32_boost_support=1 && property:persist.sys.tango_zygote32.start=1
+    start zygote_tango
+
+on property:sys.boot_completed=1 && property:ro.vendor.oplus.tango_binfmt_misc_support=1 && property:ro.vendor.oplus.app32_boost_support=1 && property:persist.sys.tango_zygote32.start=0
+    stop zygote_tango

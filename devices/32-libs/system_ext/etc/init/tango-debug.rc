@@ -1,0 +1,5 @@
+# Create directories for Tango-generated log files
+on post-fs-data && property:ro.vendor.oplus.tango_allow32=true
+    mkdir /data/tango 0755
+    mkdir /data/tango/log 0777
+    mkdir /data/tango/pretrans_log 0777
