@@ -422,6 +422,90 @@ if [[ -d devices/common/space_roulette/overlay ]] && [[ $port_vendor_brand != "r
     cp -rfv devices/common/space_roulette/overlay/* build/portrom/images/
 fi
 
+yellow "删除多余的App" "Debloating..." 
+# List of apps to be removed
+
+debloat_apps=("HeartRateDetect")
+#kept_apps=("Clock" "FileManager" "KeKeThemeSpace" "SogouInput" "Weather" "Calendar")
+kept_apps=("BackupAndRestore" "Calculator2" "Calendar" "Clock" "FileManager" "OppoNote2" "OppoWeather2" "UPTsmService" "Music")
+if [[ $super_extended == "false" ]] && [[ $pack_method == "stock" ]] && [[ -f build/baserom/images/reserve.img ]]; then
+    #extract_partition "${work_dir}/build/baserom/images/reserve.img" "${work_dir}/build/baserom/images/"
+    if [[ -f ext/del-app-ksu-module/system/product/app/* ]];then
+        rm -rf ext/del-app-ksu-module/system/product/app/*
+    fi
+    ext_moudle_app_folder="ext/del-app-ksu-module/system/product/app"
+    for delapp in $(find build/portrom/images/ -maxdepth 3 -path "*/del-app/*" -type d);do
+        
+        app_name=$(basename "$delapp")
+        # Check if the app is in kept_apps, skip if true
+        if [[ " ${kept_apps[@]} " =~ " ${app_name} " ]]; then
+            echo "Skipping kept app: $app_name"
+        continue
+        fi
+        mv -fv $delapp ${ext_moudle_app_folder}/
+        rm -rfv $delapp 
+    done 
+    pushd ext/del-app-ksu-module
+    zip -r ../del-app-ksu-module-$buildDate.zip *
+    popd
+    #cp -rfv tmp/del-app/* build/baserom/images/reserve/
+    #python3 bin/fspatch.py build/baserom/images/reserve/ build/baserom/images/config/reserve_fs_config
+    #python3 bin/contextpatch.py build/baserom/images/reserve build/baserom/images/config/reserve_file_contexts
+    #sudo perl -pi -e 's/\\@/@/g' build/portrom/images/config/${pname}_file_contexts
+    #mkfs.erofs -zlz4hc,9 --mount-point /reserve --fs-config-file build/baserom/images/config/reserve_fs_config --file-contexts build/baserom/images/config/reserve_file_contexts build/baserom/images/reserve.img build/baserom/images/reserve
+elif [[ $super_extended == "false" ]] && [[ $base_rom_model == "KB2000" ]];then
+    for delapp in $(find build/portrom/images/ -maxdepth 3 -path "*/del-app/*" -type d ); do
+        app_name=$(basename ${delapp})
+        
+        keep=false
+        for kept_app in "${kept_apps[@]}"; do
+            if [[ $app_name == *"$kept_app"* ]]; then
+                keep=true
+                break
+            fi
+        done
+        
+        if [[ $keep == false ]]; then
+            debloat_apps+=("$app_name")
+        fi
+    done
+    for debloat_app in "${debloat_apps[@]}"; do
+    # Find the app directory
+    app_dir=$(find build/portrom/images/ -type d -name "*$debloat_app*")
+    
+    # Check if the directory exists before removing
+    if [[ -d "$app_dir" ]]; then
+        yellow "删除目录: $app_dir" "Removing directory: $app_dir"
+        rm -rfv "$app_dir"
+    fi
+    done
+elif [[ $super_extended == "false" ]] && [[ $base_rom_model == "KB200"* ]];then
+    debloat_apps=("Facebook" "YTMusic" "GoogleHome" "Videos_del" "Drive_del" "ConsumerIRApp" "YouTube" "Gmail2" "Maps")
+    for debloat_app in "${debloat_apps[@]}"; do
+    # Find the app directory
+    app_dir=$(find build/portrom/images/ -type d -name "*$debloat_app*")
+    
+    # Check if the directory exists before removing
+    if [[ -d "$app_dir" ]]; then
+        yellow "删除目录: $app_dir" "Removing directory: $app_dir"
+        rm -rfv "$app_dir"
+    fi
+    done
+elif [[ $super_extended == "false" ]] && [[ $base_rom_model == "LE2101" ]];then
+    debloat_apps=("Facebook" "YTMusic" "GoogleHome" "Videos_del" "Drive_del" "ConsumerIRApp" "YouTube" "Gmail2" "Maps")
+    for debloat_app in "${debloat_apps[@]}"; do
+    # Find the app directory
+    app_dir=$(find build/portrom/images/ -type d -name "*$debloat_app*")
+    
+    # Check if the directory exists before removing
+    if [[ -d "$app_dir" ]]; then
+        yellow "删除目录: $app_dir" "Removing directory: $app_dir"
+        rm -rfv "$app_dir"
+    fi
+    done
+  rm -rfv build/portrom/images/my_stock/del-app/*
+fi
+
 rm -rf build/portrom/images/product/etc/auto-install*
 rm -rf build/portrom/images/system/verity_key
 rm -rf build/portrom/images/vendor/verity_key
